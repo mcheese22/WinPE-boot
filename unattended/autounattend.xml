@@ -20,7 +20,9 @@
       A. Disk    = 0
       B. Volume  = 0   (shrunk)
       C. Shrink  = 40960 MB  (= 40 GB freed)
-      D. InstallTo PartitionID = 3   <-- ***MUST VERIFY, see DANGER ZONE***
+      D. InstallTo PartitionID = 99 (PLACEHOLDER - partition 3 is the
+         EXISTING Windows being shrunk; the 2nd Windows goes to the NEW
+         partition. Need "list partition" to set the real number.)
       E. Edition = Windows 11 Home
       F. Account = none preset (you create it at the end)
 
@@ -104,17 +106,25 @@
             </MetaData>
           </InstallFrom>
 
-          <!-- Install target = the NEW partition created by the shrink.
-               User confirmed: PartitionID 3.
-               This is correct ONLY if disk 0 has exactly 2 partitions
-               beforehand (e.g. EFI=1, Windows=2), so the freshly created
-               partition becomes number 3. If a partition 3 already exists
-               today, DO NOT use 3 - it would be formatted/erased.
-               Sanity check anytime: Shift+F10 -> diskpart -> select disk 0
-               -> list partition (the new one is the ~40 GB entry). -->
+          <!-- !!! PLACEHOLDER - NOT YET FINAL !!!
+               Partition 3 is the EXISTING Windows (the one being shrunk),
+               so we must NOT install there. The second Windows goes into
+               the NEW partition created from the freed space, which has a
+               HIGHER number (likely 4 or 5).
+
+               99 is a deliberate dummy: if this file is run before the
+               real number is set, Setup fails safely at "partition not
+               found" instead of erasing anything.
+
+               To get the real number: Shift+F10 at the first Setup screen:
+                   diskpart
+                   select disk 0
+                   list partition
+               The new partition is the ~40 GB entry that appears after the
+               shrink. Put its number here. -->
           <InstallTo>
             <DiskID>0</DiskID>
-            <PartitionID>3</PartitionID>
+            <PartitionID>99</PartitionID>
           </InstallTo>
           <WillShowUI>OnError</WillShowUI>
         </OSImage>
