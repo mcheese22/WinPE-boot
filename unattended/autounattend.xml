@@ -104,25 +104,14 @@
             </MetaData>
           </InstallFrom>
 
-          <!-- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-               DANGER ZONE - install target partition.
-               You said "partition 3". This MUST be the brand-NEW empty
-               partition created by the shrink above, NOT your existing
-               Windows partition.
-
-               On many Windows 11 laptops your CURRENT Windows is ALREADY
-               partition 3 (Recovery=1, EFI=2, MSR sometimes hidden,
-               Windows=3/4). If partition 3 is your current Windows, this
-               will FORMAT AND ERASE IT.
-
-               CONFIRM before using: at the first Setup screen press
-               Shift+F10, then:
-                   diskpart
-                   select disk 0
-                   list partition
-               The new partition is the one whose size ~= 40 GB that did
-               NOT exist before. Put ITS number here.
-               !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! -->
+          <!-- Install target = the NEW partition created by the shrink.
+               User confirmed: PartitionID 3.
+               This is correct ONLY if disk 0 has exactly 2 partitions
+               beforehand (e.g. EFI=1, Windows=2), so the freshly created
+               partition becomes number 3. If a partition 3 already exists
+               today, DO NOT use 3 - it would be formatted/erased.
+               Sanity check anytime: Shift+F10 -> diskpart -> select disk 0
+               -> list partition (the new one is the ~40 GB entry). -->
           <InstallTo>
             <DiskID>0</DiskID>
             <PartitionID>3</PartitionID>
