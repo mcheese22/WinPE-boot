@@ -1,5 +1,35 @@
 # WinPE-boot
 
+Automate a **hands-free, dual-boot Windows 11 install** from a USB: boot it,
+walk away, and come back to a machine that shrank a volume and installed a
+second Windows 11 alongside the existing one.
+
+## 👉 Recommended path: automated dual boot (`autounattend.xml`)
+
+If you already have a **Rufus Windows 11 USB** and want to *install* a second
+Windows 11 (dual boot), this is your path — **you don't need to build WinPE
+or download anything.** The ISO on your USB already contains Windows.
+
+1. Take the file **[`unattended/autounattend.xml`](unattended/autounattend.xml)**.
+2. Fill in your disk/volume/shrink-size/partition/edition (all marked `### SET ###`).
+3. Copy it to the **root of your Rufus USB**.
+4. Boot the USB — Windows Setup reads the file and does everything: shrink →
+   new partition → install second Windows 11. Result = **dual boot menu**.
+
+📖 Full walkthrough: **[docs/DUALBOOT.md](docs/DUALBOOT.md)** — includes the
+important "test in a VM first" safety step.
+
+> There is no literal "download" button — **booting the USB *is* the trigger**.
+> That's the one-click, repeatable flow.
+
+---
+
+## Alternative path: WinPE that *downloads* a fresh ISO
+
+Only needed if you do **not** have an ISO and want the USB to fetch one from
+the internet at boot (requires wired Ethernet — WinPE has no Wi-Fi). This is
+the original kit below.
+
 A hands-free **WinPE** kit that boots from USB and automatically:
 
 1. 🌐 brings up networking,
@@ -8,12 +38,9 @@ A hands-free **WinPE** kit that boots from USB and automatically:
 4. ➕ (optional) creates + formats a new partition in the freed space,
 5. ⬇️ **downloads a Windows 11 ISO** into it — no keyboard required.
 
-You configure it in one file, build it into a bootable USB with one
-script, then boot and walk away.
-
 > ⚠️ **WinPE images can only be *built* on a Windows PC with the Microsoft
-> ADK.** This repo holds the complete script kit; `build/Build-WinPE.ps1`
-> turns it into your bootable USB. See **[docs/SETUP.md](docs/SETUP.md)**.
+> ADK.** `build/Build-WinPE.ps1` turns the scripts into a bootable USB.
+> See **[docs/SETUP.md](docs/SETUP.md)**.
 
 ## Layout
 

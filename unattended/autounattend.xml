@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  =====================================================================
+   autounattend.xml  --  automated DUAL-BOOT Windows 11 install
+  =====================================================================
+  Put this file in the ROOT of your Rufus Windows 11 USB (next to
+  setup.exe / the "sources" folder). When you boot the USB, Windows
+  Setup finds it automatically and runs the whole install hands-free.
+
+  WHAT IT DOES, in order:
+    1. (windowsPE pass) Runs diskpart to:
+         - select your existing disk + volume
+         - SHRINK that volume by a set size (non-destructive)
+         - CREATE a new partition in the freed space
+         - FORMAT it and give it a drive letter
+    2. Installs Windows 11 INTO that new partition only.
+       Your existing Windows 11 is left completely alone -> dual boot.
+
+  >>> THINGS YOU MUST SET  (search for  ### SET ###  below) <<<
+      A. Disk number to target                 (usually 0)
+      B. Volume number to shrink               (your current C:)
+      C. Shrink size in MB                     (e.g. 61440 = 60 GB)
+      D. PartitionID to install into           (the NEW partition)
+      E. Edition name that matches your ISO    (e.g. "Windows 11 Pro")
+      F. Local account name + password
+
+  !!! SAFETY !!!
+    - The shrink is non-destructive (only reclaims free space).
+    - The DANGER is the InstallTo PartitionID (item D): if it points at
+      an existing partition, Setup will FORMAT it. Get this number right.
+    - TEST IN A VIRTUAL MACHINE FIRST. It's free and it cannot hurt your
+      real laptop. See docs/DUALBOOT.md.
+-->
+<unattend xmlns="urn:schemas-microsoft-com:unattend">
+
+  <!-- =================================================================
+       PASS 1: windowsPE  (partitioning + which image to install)
+       ================================================================= -->
+  <settings pass="windowsPE">
+
+    <!-- Language / keyboard so Setup never stops to ask -->
+    <component name="Microsoft-Windows-International-Core-WinPE"
+               processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral"
+               versionScope="nonSxS">
+      <SetupUILanguage>
+        <UILanguage>en-US</UILanguage>
+      </SetupUILanguage>
+      <InputLocale>en-US</InputLocale>
+      <SystemLocale>en-US</SystemLocale>
+      <UILanguage>en-US</UILanguage>
+      <UserLocale>en-US</UserLocale>
+    </component>
+
+    <component name="Microsoft-Windows-Setup"
+               processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral"
+               versionScope="nonSxS">
+
+      <!-- ---------------------------------------------------------------
+           STEP 1: shrink existing volume + create the new partition.
+           The commands are piped straight into diskpart (no external
+           script file needed, so USB drive-letter doesn't matter).
+
+           ### SET ### the three numbers below:
+             SELECT DISK=0        -> (A) target disk
+             SELECT VOLUME=2      -> (B) volume to shrink (your C:)
+             SHRINK DESIRED=61440 -> (C) size to free, in MB (here 60 GB)
+
+           NOTE: volume NUMBERS inside Setup can differ from what you see
+           in normal Windows. Confirm them with "list volume" from a
+           Setup command prompt (Shift+F10) or a VM test first.
+           --------------------------------------------------------------- -->
+      <RunSynchronous>
+        <RunSynchronousCommand wcm:action="add">
+          <Order>1</Order>
+          <Description>Shrink volume and create dual-boot partition</Description>
+          <Path>cmd.exe /c "(echo SELECT DISK=0 &amp; echo SELECT VOLUME=2 &amp; echo SHRINK DESIRED=61440 &amp; echo CREATE PARTITION PRIMARY &amp; echo FORMAT FS=NTFS LABEL=Windows11 QUICK &amp; echo ASSIGN LETTER=W) | diskpart.exe"</Path>
+        </RunSynchronousCommand>
+      </RunSynchronous>
+
+      <UserData>
+        <!-- Generic Windows 11 Pro key: lets Setup proceed WITHOUT asking.
+             It does NOT activate Windows (use your own key later, or
+             replace this with your real key). Delete the whole ProductKey
+             block if your ISO is single-edition and asks nothing. -->
+        <ProductKey>
+          <Key>W269N-WFGWX-YVC9B-4J6C9-T83GX</Key>
+          <WillShowUI>OnError</WillShowUI>
+        </ProductKey>
+        <AcceptEula>true</AcceptEula>
+      </UserData>
+
+      <ImageInstall>
+        <OSImage>
+          <!-- ### SET ### edition name that EXISTS in your ISO.
+               Check with:  dism /Get-WimInfo /WimFile:X:\sources\install.wim
+               Common values: "Windows 11 Home", "Windows 11 Pro". -->
+          <InstallFrom>
+            <MetaData wcm:action="add">
+              <Key>/IMAGE/NAME</Key>
+              <Value>Windows 11 Pro</Value>
+            </MetaData>
+          </InstallFrom>
+
+          <!-- ### SET ### install target = the NEW partition made above.
+               DiskID matches (A). PartitionID is the number of the newly
+               created partition. On a typical Win11 disk with partitions
+               1..4 already present, the new one is usually 5.
+               VERIFY with "list partition" after the shrink. -->
+          <InstallTo>
+            <DiskID>0</DiskID>
+            <PartitionID>5</PartitionID>
+          </InstallTo>
+          <WillShowUI>OnError</WillShowUI>
+        </OSImage>
+      </ImageInstall>
+    </component>
+  </settings>
+
+  <!-- =================================================================
+       PASS 2: specialize  (skip a couple of prompts)
+       ================================================================= -->
+  <settings pass="specialize">
+    <component name="Microsoft-Windows-Shell-Setup"
+               processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral"
+               versionScope="nonSxS">
+      <ComputerName>*</ComputerName>
+    </component>
+  </settings>
+
+  <!-- =================================================================
+       PASS 3: oobeSystem  (skip the out-of-box setup, make an account)
+       ================================================================= -->
+  <settings pass="oobeSystem">
+    <component name="Microsoft-Windows-Shell-Setup"
+               processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral"
+               versionScope="nonSxS">
+
+      <OOBE>
+        <HideEULAPage>true</HideEULAPage>
+        <HideOEMRegistrationScreen>true</HideOEMRegistrationScreen>
+        <HideOnlineAccountScreens>true</HideOnlineAccountScreens>
+        <HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
+        <ProtectYourPC>3</ProtectYourPC>
+      </OOBE>
+
+      <UserAccounts>
+        <LocalAccounts>
+          <LocalAccount wcm:action="add">
+            <!-- ### SET ### your local account name + password -->
+            <Name>User</Name>
+            <DisplayName>User</DisplayName>
+            <Group>Administrators</Group>
+            <Password>
+              <Value>ChangeMe123!</Value>
+              <PlainText>true</PlainText>
+            </Password>
+          </LocalAccount>
+        </LocalAccounts>
+      </UserAccounts>
+
+      <!-- accept region defaults without prompting -->
+      <TimeZone>UTC</TimeZone>
+    </component>
+  </settings>
+
+</unattend>
