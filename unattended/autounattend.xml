@@ -16,18 +16,20 @@
     2. Installs Windows 11 INTO that new partition only.
        Your existing Windows 11 is left completely alone -> dual boot.
 
-  >>> THINGS YOU MUST SET  (search for  ### SET ###  below) <<<
-      A. Disk number to target                 (usually 0)
-      B. Volume number to shrink               (your current C:)
-      C. Shrink size in MB                     (e.g. 61440 = 60 GB)
-      D. PartitionID to install into           (the NEW partition)
-      E. Edition name that matches your ISO    (e.g. "Windows 11 Pro")
-      F. Local account name + password
+  CURRENT VALUES (from your setup):
+      A. Disk    = 0
+      B. Volume  = 0   (shrunk)
+      C. Shrink  = 40960 MB  (= 40 GB freed)
+      D. InstallTo PartitionID = 3   <-- ***MUST VERIFY, see DANGER ZONE***
+      E. Edition = Windows 11 Home
+      F. Account = none preset (you create it at the end)
 
   !!! SAFETY !!!
     - The shrink is non-destructive (only reclaims free space).
     - The DANGER is the InstallTo PartitionID (item D): if it points at
-      an existing partition, Setup will FORMAT it. Get this number right.
+      an EXISTING partition (very likely your current Windows on a normal
+      laptop), Setup will FORMAT and ERASE it. Verify it is the NEW ~40 GB
+      partition before trusting it.
     - TEST IN A VIRTUAL MACHINE FIRST. It's free and it cannot hurt your
       real laptop. See docs/DUALBOOT.md.
 -->
@@ -75,17 +77,16 @@
         <RunSynchronousCommand wcm:action="add">
           <Order>1</Order>
           <Description>Shrink volume and create dual-boot partition</Description>
-          <Path>cmd.exe /c "(echo SELECT DISK=0 &amp; echo SELECT VOLUME=2 &amp; echo SHRINK DESIRED=61440 &amp; echo CREATE PARTITION PRIMARY &amp; echo FORMAT FS=NTFS LABEL=Windows11 QUICK &amp; echo ASSIGN LETTER=W) | diskpart.exe"</Path>
+          <Path>cmd.exe /c "(echo SELECT DISK=0 &amp; echo SELECT VOLUME=0 &amp; echo SHRINK DESIRED=40960 &amp; echo CREATE PARTITION PRIMARY &amp; echo FORMAT FS=NTFS LABEL=Windows11 QUICK &amp; echo ASSIGN LETTER=W) | diskpart.exe"</Path>
         </RunSynchronousCommand>
       </RunSynchronous>
 
       <UserData>
-        <!-- Generic Windows 11 Pro key: lets Setup proceed WITHOUT asking.
+        <!-- Generic Windows 11 HOME key: lets Setup proceed WITHOUT asking.
              It does NOT activate Windows (use your own key later, or
-             replace this with your real key). Delete the whole ProductKey
-             block if your ISO is single-edition and asks nothing. -->
+             replace this with your real key). -->
         <ProductKey>
-          <Key>W269N-WFGWX-YVC9B-4J6C9-T83GX</Key>
+          <Key>TX9XD-98N7V-6WMQ6-BX7FG-H8Q99</Key>
           <WillShowUI>OnError</WillShowUI>
         </ProductKey>
         <AcceptEula>true</AcceptEula>
@@ -99,18 +100,32 @@
           <InstallFrom>
             <MetaData wcm:action="add">
               <Key>/IMAGE/NAME</Key>
-              <Value>Windows 11 Pro</Value>
+              <Value>Windows 11 Home</Value>
             </MetaData>
           </InstallFrom>
 
-          <!-- ### SET ### install target = the NEW partition made above.
-               DiskID matches (A). PartitionID is the number of the newly
-               created partition. On a typical Win11 disk with partitions
-               1..4 already present, the new one is usually 5.
-               VERIFY with "list partition" after the shrink. -->
+          <!-- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+               DANGER ZONE - install target partition.
+               You said "partition 3". This MUST be the brand-NEW empty
+               partition created by the shrink above, NOT your existing
+               Windows partition.
+
+               On many Windows 11 laptops your CURRENT Windows is ALREADY
+               partition 3 (Recovery=1, EFI=2, MSR sometimes hidden,
+               Windows=3/4). If partition 3 is your current Windows, this
+               will FORMAT AND ERASE IT.
+
+               CONFIRM before using: at the first Setup screen press
+               Shift+F10, then:
+                   diskpart
+                   select disk 0
+                   list partition
+               The new partition is the one whose size ~= 40 GB that did
+               NOT exist before. Put ITS number here.
+               !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! -->
           <InstallTo>
             <DiskID>0</DiskID>
-            <PartitionID>5</PartitionID>
+            <PartitionID>3</PartitionID>
           </InstallTo>
           <WillShowUI>OnError</WillShowUI>
         </OSImage>
@@ -139,31 +154,17 @@
                publicKeyToken="31bf3856ad364e35" language="neutral"
                versionScope="nonSxS">
 
+      <!-- No preset account: the shrink + install run hands-free, and at
+           the very end you create your own account on the normal Windows
+           welcome screens. (HideOnlineAccountScreens left FALSE so the
+           account screen is shown for you to fill in.) -->
       <OOBE>
         <HideEULAPage>true</HideEULAPage>
         <HideOEMRegistrationScreen>true</HideOEMRegistrationScreen>
-        <HideOnlineAccountScreens>true</HideOnlineAccountScreens>
+        <HideOnlineAccountScreens>false</HideOnlineAccountScreens>
         <HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
         <ProtectYourPC>3</ProtectYourPC>
       </OOBE>
-
-      <UserAccounts>
-        <LocalAccounts>
-          <LocalAccount wcm:action="add">
-            <!-- ### SET ### your local account name + password -->
-            <Name>User</Name>
-            <DisplayName>User</DisplayName>
-            <Group>Administrators</Group>
-            <Password>
-              <Value>ChangeMe123!</Value>
-              <PlainText>true</PlainText>
-            </Password>
-          </LocalAccount>
-        </LocalAccounts>
-      </UserAccounts>
-
-      <!-- accept region defaults without prompting -->
-      <TimeZone>UTC</TimeZone>
     </component>
   </settings>
 
