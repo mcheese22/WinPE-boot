@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   =====================================================================
-   autounattend.xml  --  automated DUAL-BOOT Windows 11 install
+   autounattend.xml : automated DUAL-BOOT Windows 11 install
   =====================================================================
   Put this file in the ROOT of your Rufus Windows 11 USB (next to
   setup.exe / the "sources" folder). When you boot the USB, Windows
@@ -9,37 +9,37 @@
 
   WHAT IT DOES, in order:
     1. (windowsPE pass) Runs diskpart to:
-         - select your existing disk + volume
-         - SHRINK that volume by a set size (non-destructive)
-         - CREATE a new partition in the freed space
-         - FORMAT it and give it a drive letter
+         * select your existing disk + volume
+         * SHRINK that volume by a set size (non-destructive)
+         * CREATE a new partition in the freed space
+         * FORMAT it and give it a drive letter
     2. Installs Windows 11 INTO that new partition only.
-       Your existing Windows 11 is left completely alone -> dual boot.
+       Your existing Windows 11 is left completely alone (dual boot).
 
   CURRENT VALUES (from your setup):
       A. Disk    = 0
-      B. Volume  = 0   (shrunk)
+      B. Volume  = 0   (shrunk; this is partition 3, your current Windows)
       C. Shrink  = 40960 MB  (= 40 GB freed)
-      D. InstallTo PartitionID = 99 (PLACEHOLDER - partition 3 is the
-         EXISTING Windows being shrunk; the 2nd Windows goes to the NEW
-         partition. Need "list partition" to set the real number.)
+      D. InstallTo PartitionID = 4  (the NEW partition made from the freed
+         space; partition 3 is the existing Windows that only gets shrunk)
       E. Edition = Windows 11 Home
       F. Account = none preset (you create it at the end)
 
-  !!! SAFETY !!!
-    - The shrink is non-destructive (only reclaims free space).
-    - The DANGER is the InstallTo PartitionID (item D): if it points at
-      an EXISTING partition (very likely your current Windows on a normal
-      laptop), Setup will FORMAT and ERASE it. Verify it is the NEW ~40 GB
-      partition before trusting it.
-    - TEST IN A VIRTUAL MACHINE FIRST. It's free and it cannot hurt your
-      real laptop. See docs/DUALBOOT.md.
+  SAFETY:
+    * The shrink is non-destructive (only reclaims free space).
+    * The key number is the InstallTo PartitionID (item D). It must be the
+      NEW ~40 GB partition (4), never an existing one, or Setup would
+      format that partition.
+    * TEST IN A VIRTUAL MACHINE FIRST. It is free and cannot hurt your real
+      laptop. See docs/DUALBOOT.md.
 -->
-<unattend xmlns="urn:schemas-microsoft-com:unattend">
+<unattend xmlns="urn:schemas-microsoft-com:unattend"
+          xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 
-  <!-- =================================================================
+  <!-- ================================================================
        PASS 1: windowsPE  (partitioning + which image to install)
-       ================================================================= -->
+       ================================================================ -->
   <settings pass="windowsPE">
 
     <!-- Language / keyboard so Setup never stops to ask -->
@@ -61,20 +61,20 @@
                publicKeyToken="31bf3856ad364e35" language="neutral"
                versionScope="nonSxS">
 
-      <!-- ---------------------------------------------------------------
-           STEP 1: shrink existing volume + create the new partition.
-           The commands are piped straight into diskpart (no external
-           script file needed, so USB drive-letter doesn't matter).
+      <!-- STEP 1: shrink existing volume + create the new partition.
+           Commands are piped straight into diskpart (no external script
+           file, so the USB drive-letter does not matter).
 
-           ### SET ### the three numbers below:
-             SELECT DISK=0        -> (A) target disk
-             SELECT VOLUME=2      -> (B) volume to shrink (your C:)
-             SHRINK DESIRED=61440 -> (C) size to free, in MB (here 60 GB)
+           Current values (from your setup):
+             SELECT DISK=0        : target disk = 0
+             SELECT VOLUME=0      : volume to shrink = 0 (your Windows,
+                                    which is partition 3)
+             SHRINK DESIRED=40960 : free 40 GB
+           The freed space then becomes partition 4 (the install target).
 
-           NOTE: volume NUMBERS inside Setup can differ from what you see
-           in normal Windows. Confirm them with "list volume" from a
-           Setup command prompt (Shift+F10) or a VM test first.
-           --------------------------------------------------------------- -->
+           NOTE: volume numbers inside Setup can differ from what normal
+           Windows shows. Confirm with "list volume" from a Setup command
+           prompt (Shift+F10) or a VM test first. -->
       <RunSynchronous>
         <RunSynchronousCommand wcm:action="add">
           <Order>1</Order>
@@ -84,7 +84,7 @@
       </RunSynchronous>
 
       <UserData>
-        <!-- Generic Windows 11 HOME key: lets Setup proceed WITHOUT asking.
+        <!-- Generic Windows 11 HOME key: lets Setup proceed without asking.
              It does NOT activate Windows (use your own key later, or
              replace this with your real key). -->
         <ProductKey>
@@ -96,8 +96,8 @@
 
       <ImageInstall>
         <OSImage>
-          <!-- ### SET ### edition name that EXISTS in your ISO.
-               Check with:  dism /Get-WimInfo /WimFile:X:\sources\install.wim
+          <!-- Edition name that EXISTS in your ISO. Verify with:
+                 dism /Get-WimInfo /WimFile:X:\sources\install.wim
                Common values: "Windows 11 Home", "Windows 11 Pro". -->
           <InstallFrom>
             <MetaData wcm:action="add">
@@ -106,25 +106,16 @@
             </MetaData>
           </InstallFrom>
 
-          <!-- !!! PLACEHOLDER - NOT YET FINAL !!!
-               Partition 3 is the EXISTING Windows (the one being shrunk),
-               so we must NOT install there. The second Windows goes into
-               the NEW partition created from the freed space, which has a
-               HIGHER number (likely 4 or 5).
-
-               99 is a deliberate dummy: if this file is run before the
-               real number is set, Setup fails safely at "partition not
-               found" instead of erasing anything.
-
-               To get the real number: Shift+F10 at the first Setup screen:
-                   diskpart
-                   select disk 0
-                   list partition
-               The new partition is the ~40 GB entry that appears after the
-               shrink. Put its number here. -->
+          <!-- Install target = the NEW partition created from the freed
+               space. Confirmed layout:
+                 Before shrink: disk 0 has partitions 1, 2, 3
+                   (partition 3 = existing Windows being shrunk).
+                 After shrink + create: the new ~40 GB partition = 4.
+               So the second Windows installs into partition 4, leaving
+               partition 3 (current Windows) intact for dual boot. -->
           <InstallTo>
             <DiskID>0</DiskID>
-            <PartitionID>99</PartitionID>
+            <PartitionID>4</PartitionID>
           </InstallTo>
           <WillShowUI>OnError</WillShowUI>
         </OSImage>
@@ -132,9 +123,9 @@
     </component>
   </settings>
 
-  <!-- =================================================================
+  <!-- ================================================================
        PASS 2: specialize  (skip a couple of prompts)
-       ================================================================= -->
+       ================================================================ -->
   <settings pass="specialize">
     <component name="Microsoft-Windows-Shell-Setup"
                processorArchitecture="amd64"
@@ -144,9 +135,9 @@
     </component>
   </settings>
 
-  <!-- =================================================================
-       PASS 3: oobeSystem  (skip the out-of-box setup, make an account)
-       ================================================================= -->
+  <!-- ================================================================
+       PASS 3: oobeSystem  (skip most out-of-box prompts)
+       ================================================================ -->
   <settings pass="oobeSystem">
     <component name="Microsoft-Windows-Shell-Setup"
                processorArchitecture="amd64"
@@ -155,8 +146,8 @@
 
       <!-- No preset account: the shrink + install run hands-free, and at
            the very end you create your own account on the normal Windows
-           welcome screens. (HideOnlineAccountScreens left FALSE so the
-           account screen is shown for you to fill in.) -->
+           welcome screens (HideOnlineAccountScreens left false so that
+           screen is shown for you to fill in). -->
       <OOBE>
         <HideEULAPage>true</HideEULAPage>
         <HideOEMRegistrationScreen>true</HideOEMRegistrationScreen>
